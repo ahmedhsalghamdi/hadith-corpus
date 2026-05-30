@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hadith Corpus — Arabic / English Search</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IBM+Plex+Mono:wght@400;500&family=Noto+Naskh+Arabic:wght@400;500;700&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --ink:#1a1208;--paper:#faf7f2;--warm:#f0ebe0;--rule:#c8b89a;
+  --faint:#e8e0d0;--accent:#8b4513;--accent2:#5c7a3e;--red:#9b2335;
+  --mono:'IBM Plex Mono',monospace;--serif:'IM Fell English',serif;--arabic:'Noto Naskh Arabic',serif;
+}
+
+body{font-family:var(--serif);font-size:14px;background:var(--paper);color:var(--ink);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+
+#hd{border-bottom:2px solid var(--ink);padding:12px 20px 10px;flex-shrink:0;background:var(--paper)}
+#hd h1{font-size:18px;font-weight:normal;letter-spacing:.02em}
+#hd h1 em{font-style:italic;color:var(--accent)}
+#hd p{font-size:10px;color:#888;font-family:var(--mono);margin-top:3px;letter-spacing:.05em}
+.pill{font-family:var(--mono);font-size:9px;padding:2px 7px;border:1px solid var(--rule);color:#888;letter-spacing:.04em;margin-top:5px;display:inline-block}
+.pill.loaded{border-color:var(--accent2);color:var(--accent2)}
+.pill.error{border-color:var(--red);color:var(--red)}
+
+/* SEARCH BAR */
+#sb{flex-shrink:0;border-bottom:1px solid var(--rule);background:var(--warm);padding:12px 20px;display:flex;flex-direction:column;gap:8px}
+.srow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#q{flex:1;min-width:240px;font-family:var(--serif);font-size:15px;padding:8px 12px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);outline:none}
+#q:focus{border-color:var(--accent)}
+.run{padding:8px 22px;font-family:var(--serif);font-size:14px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);cursor:pointer;letter-spacing:.02em}
+.run:hover{background:var(--accent);border-color:var(--accent)}
+.run:disabled{opacity:.4;cursor:not-allowed}
+.opt-lbl{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#888;white-space:nowrap}
+.btn-grp{display:flex;border:1px solid var(--rule);overflow:hidden}
+.btn-grp button{font-family:var(--mono);font-size:10px;padding:4px 10px;border:none;border-right:1px solid var(--rule);background:var(--paper);color:#666;cursor:pointer}
+.btn-grp button:last-child{border-right:none}
+.btn-grp button.active{background:var(--ink);color:var(--paper)}
+.btn-grp button:hover:not(.active){background:var(--faint)}
+select{padding:4px 8px;font-family:var(--mono);font-size:10px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);cursor:pointer;outline:none}
+
+#statsbar{font-family:var(--mono);font-size:10px;color:#999;padding:5px 20px;border-bottom:1px solid var(--faint);background:var(--paper);flex-shrink:0;letter-spacing:.03em}
+
+#results{flex:1;overflow-y:auto;padding:6px 20px 40px}
+
+.hit{border-bottom:1px solid var(--faint);padding:12px 0}
+.hit-meta{font-family:var(--mono);font-size:9px;color:#bbb;margin-bottom:5px;display:flex;gap:10px;align-items:center}
+.hit-meta .col{color:var(--accent)}
+.hit-en{font-size:14px;line-height:1.55;color:#2a2018;margin-bottom:6px}
+.hit-ar{font-family:var(--arabic);font-size:16px;direction:rtl;text-align:right;color:#3a2e1e;line-height:1.9}
+mark{background:#ffe88a;color:var(--ink);padding:0 2px;font-weight:500}
+mark.ar{background:#cfe5b8}
+
+.msg{text-align:center;padding:60px 20px;color:#aaa;font-style:italic;font-size:14px}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid #ddd;border-top-color:var(--accent);border-radius:50%;animation:rot .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+#load-overlay{position:fixed;inset:0;background:var(--paper);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;gap:16px}
+#load-overlay h2{font-family:var(--serif);font-size:22px;font-weight:normal}
+#load-overlay h2 em{font-style:italic;color:var(--accent)}
+.bar-track{width:300px;height:4px;background:var(--faint);overflow:hidden}
+.bar-fill{height:100%;background:var(--accent);width:0%;transition:width .3s}
+#load-overlay p{font-family:var(--mono);font-size:10px;color:#999}
+.pager{display:flex;gap:8px;align-items:center;justify-content:center;padding:16px 0;font-family:var(--mono);font-size:11px}
+.pager button{font-family:var(--mono);font-size:11px;padding:4px 12px;border:1px solid var(--rule);background:var(--paper);cursor:pointer;color:#555}
+.pager button:hover:not(:disabled){background:var(--faint)}
+.pager button:disabled{opacity:.35;cursor:not-allowed}
+</style>
+</head>
+<body>
+
+<div id="load-overlay">
+  <h2><em>Hadith Corpus</em></h2>
+  <div class="bar-track"><div class="bar-fill" id="bar"></div></div>
+  <p id="load-msg">Loading corpus…</p>
+</div>
+
+<div id="hd">
+  <h1>Hadith Corpus &mdash; <em>Arabic / English Search</em></h1>
+  <p>PARALLEL TEXTS &bull; 36,065 HADITH &bull; 8 COLLECTIONS &bull; SOURCE: SUNNAH.COM</p>
+  <span id="pill" class="pill">⏳ Loading…</span>
+</div>
+
+<div id="sb">
+  <div class="srow">
+    <input id="q" type="text" placeholder="Search English or Arabic… e.g. free time  /  الفراغ  /  pay the price" onkeydown="if(event.key==='Enter')runSearch()">
+    <button class="run" id="run-btn" onclick="runSearch()" disabled>Search</button>
+  </div>
+  <div class="srow">
+    <span class="opt-lbl">Language:</span>
+    <div class="btn-grp" id="lang-btns">
+      <button class="active" onclick="setLang('both')">Both</button>
+      <button onclick="setLang('en')">English</button>
+      <button onclick="setLang('ar')">Arabic</button>
+    </div>
+    <span class="opt-lbl">Match:</span>
+    <div class="btn-grp" id="mode-btns">
+      <button class="active" onclick="setMode('substring')">Substring</button>
+      <button onclick="setMode('whole')">Whole word</button>
+    </div>
+    <span class="opt-lbl">Collection:</span>
+    <select id="coll-filter" onchange="runSearch()">
+      <option value="">All collections</option>
+    </select>
+  </div>
+</div>
+
+<div id="statsbar">Loading corpus, please wait…</div>
+<div id="results"><div class="msg">Corpus loading…</div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+<script>
+// ╔═══════════════════════════════════════════════════════════════════════╗
+// ║  Change this if you host corpus.json.gz elsewhere                      ║
+// ╚═══════════════════════════════════════════════════════════════════════╝
+const DATA_URL = 'data/corpus.json.gz';
+
+let CORPUS=null, PAIRS=[], corpusLoaded=false;
+let lang='both', mode='substring';
+let lastHits=[], page=0;
+const PER_PAGE=50;
+
+// ── LOAD ──────────────────────────────────────────────────────────────────
+async function loadCorpus(){
+  const bar=document.getElementById('bar'), msg=document.getElementById('load-msg');
+  try{
+    msg.textContent='Downloading corpus (~11 MB)…'; bar.style.width='15%';
+    const resp=await fetch(DATA_URL);
+    if(!resp.ok) throw new Error('HTTP '+resp.status+' — is data/corpus.json.gz uploaded?');
+    const buf=await resp.arrayBuffer(); bar.style.width='55%';
+    msg.textContent='Decompressing…';
+    const text=pako.ungzip(new Uint8Array(buf),{to:'string'}); bar.style.width='80%';
+    msg.textContent='Parsing…';
+    CORPUS=JSON.parse(text); bar.style.width='92%';
+
+    // Flatten into one searchable array
+    for(const b of CORPUS.meta.books){
+      const bk=CORPUS.books[b.slug];
+      for(const h of bk.hadith){
+        PAIRS.push({en:h.en, ar:h.ar, enL:h.en.toLowerCase(), src:b.title_en, slug:b.slug, n:h.n});
+      }
+    }
+    bar.style.width='100%';
+
+    // Fill collection dropdown
+    const sel=document.getElementById('coll-filter');
+    for(const b of CORPUS.meta.books){
+      const o=document.createElement('option'); o.value=b.slug; o.textContent=`${b.title_en} (${b.count.toLocaleString()})`;
+      sel.appendChild(o);
+    }
+
+    corpusLoaded=true;
+    setTimeout(()=>{document.getElementById('load-overlay').style.display='none';},250);
+    document.getElementById('run-btn').disabled=false;
+    document.getElementById('pill').textContent='✓ '+CORPUS.meta.total.toLocaleString()+' hadith loaded';
+    document.getElementById('pill').className='pill loaded';
+    document.getElementById('statsbar').textContent='Ready. Type a word or phrase in English or Arabic and press Search.';
+    document.getElementById('results').innerHTML='<div class="msg">Enter a search term above.</div>';
+    document.getElementById('q').focus();
+  }catch(e){
+    msg.textContent='Failed: '+e.message;
+    document.getElementById('pill').textContent='✗ Load failed';
+    document.getElementById('pill').className='pill error';
+    console.error(e);
+  }
+}
+
+function setLang(l){lang=l;document.querySelectorAll('#lang-btns button').forEach((b,i)=>b.classList.toggle('active',['both','en','ar'][i]===l));}
+function setMode(m){mode=m;document.querySelectorAll('#mode-btns button').forEach((b,i)=>b.classList.toggle('active',['substring','whole'][i]===m));}
+
+// Normalise Arabic — strip diacritics (tashkeel) for forgiving matching
+function arNorm(s){
+  return s.replace(/[\u064B-\u0652\u0670\u0640]/g,'')   // harakat + tatweel
+          .replace(/[إأآا]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه');
+}
+
+function matchWhole(hayL, needL){
+  const idx=hayL.indexOf(needL);
+  if(idx===-1) return -1;
+  const before=idx===0||!/[a-z]/i.test(hayL[idx-1]);
+  const after=idx+needL.length>=hayL.length||!/[a-z]/i.test(hayL[idx+needL.length]);
+  return (before&&after)?idx:-1;
+}
+
+function runSearch(){
+  if(!corpusLoaded)return;
+  const raw=document.getElementById('q').value.trim();
+  if(!raw){document.getElementById('results').innerHTML='<div class="msg">Enter a search term.</div>';return;}
+
+  const coll=document.getElementById('coll-filter').value;
+  const isArabicQuery=/[\u0600-\u06FF]/.test(raw);
+  const qEnL=raw.toLowerCase();
+  const qArN=arNorm(raw);
+
+  document.getElementById('statsbar').innerHTML='<span class="spin"></span>Searching…';
+
+  setTimeout(()=>{
+    const hits=[];
+    for(const p of PAIRS){
+      if(coll && p.slug!==coll) continue;
+      let hitEn=false, hitAr=false;
+
+      if((lang==='both'||lang==='en') && !isArabicQuery){
+        hitEn = mode==='whole' ? matchWhole(p.enL,qEnL)>=0 : p.enL.indexOf(qEnL)>=0;
+      }
+      if((lang==='both'||lang==='ar')){
+        hitAr = arNorm(p.ar).indexOf(qArN)>=0;
+      }
+      if(hitEn||hitAr) hits.push({...p, hitEn, hitAr});
+    }
+    lastHits=hits; page=0;
+    const ms = `${hits.length.toLocaleString()} hadith found for "${esc(raw)}"${coll?' in '+document.querySelector('#coll-filter option:checked').textContent.replace(/\s*\(.*/,''):''} | lang: ${lang} | mode: ${mode}`;
+    document.getElementById('statsbar').textContent=ms;
+    renderPage(raw);
+  },10);
+}
+
+function renderPage(raw){
+  const start=page*PER_PAGE, slice=lastHits.slice(start,start+PER_PAGE);
+  const el=document.getElementById('results');
+  if(!lastHits.length){el.innerHTML='<div class="msg">No matches found.</div>';return;}
+
+  const isArabicQuery=/[\u0600-\u06FF]/.test(raw);
+  const qEnL=raw.toLowerCase(), qArN=arNorm(raw);
+
+  el.innerHTML = slice.map(p=>{
+    let en=esc(p.en), ar=esc(p.ar);
+    // highlight English
+    if(p.hitEn && !isArabicQuery){
+      const re=new RegExp('('+qEnL.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','ig');
+      en=esc(p.en).replace(re,'<mark>$1</mark>');
+    }
+    // highlight Arabic (match on normalised, mark on original by index)
+    if(p.hitAr){
+      const norm=arNorm(p.ar), idx=norm.indexOf(qArN);
+      if(idx>=0){
+        // map back: since arNorm only removes chars (harakat), build index map
+        ar = highlightArabic(p.ar, qArN);
+      }
+    }
+    return `<div class="hit">
+      <div class="hit-meta"><span class="col">${esc(p.src)}</span><span>#${p.n}</span></div>
+      <div class="hit-en">${en}</div>
+      <div class="hit-ar">${ar}</div>
+    </div>`;
+  }).join('') + pager();
+}
+
+// Highlight Arabic on the ORIGINAL string by walking normalised positions
+function highlightArabic(orig, needleNorm){
+  if(!needleNorm) return esc(orig);
+  // Build mapping: for each original char, its normalised form (may be '' if removed)
+  const map=[]; let norm='';
+  for(let i=0;i<orig.length;i++){
+    const c=orig[i];
+    const n=arNorm(c);
+    for(let k=0;k<n.length;k++) map.push(i); // each norm char maps back to orig index
+    norm+=n;
+  }
+  const idx=norm.indexOf(needleNorm);
+  if(idx<0) return esc(orig);
+  const startOrig=map[idx];
+  const endOrig=(idx+needleNorm.length<map.length)?map[idx+needleNorm.length]:orig.length;
+  return esc(orig.slice(0,startOrig))+'<mark class="ar">'+esc(orig.slice(startOrig,endOrig))+'</mark>'+esc(orig.slice(endOrig));
+}
+
+function pager(){
+  const total=Math.ceil(lastHits.length/PER_PAGE);
+  if(total<=1) return '';
+  return `<div class="pager">
+    <button onclick="prevPage()" ${page===0?'disabled':''}>‹ Prev</button>
+    <span>page ${page+1} / ${total} &nbsp;(${lastHits.length.toLocaleString()} hits)</span>
+    <button onclick="nextPage()" ${page>=total-1?'disabled':''}>Next ›</button>
+  </div>`;
+}
+function nextPage(){const t=Math.ceil(lastHits.length/PER_PAGE);if(page<t-1){page++;renderPage(document.getElementById('q').value.trim());document.getElementById('results').scrollTop=0;}}
+function prevPage(){if(page>0){page--;renderPage(document.getElementById('q').value.trim());document.getElementById('results').scrollTop=0;}}
+
+function esc(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+loadCorpus();
+</script>
+</body>
+</html>
