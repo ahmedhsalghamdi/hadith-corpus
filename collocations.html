@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Collocation Browser — Hadith Corpus</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IBM+Plex+Mono:wght@400;500&family=Noto+Naskh+Arabic:wght@400;500;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#1a1208;--paper:#faf7f2;--warm:#f0ebe0;--rule:#c8b89a;
+  --faint:#e8e0d0;--accent:#8b4513;--accent2:#5c7a3e;--red:#9b2335;
+  --mono:'IBM Plex Mono',monospace;--serif:'IM Fell English',serif;--arabic:'Noto Naskh Arabic',serif
+}
+body{font-family:var(--serif);font-size:14px;background:var(--paper);color:var(--ink);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+
+/* ── HEADER ── */
+#hd{border-bottom:2px solid var(--ink);padding:10px 18px 8px;flex-shrink:0}
+#hd h1{font-size:17px;font-weight:normal}
+#hd h1 em{font-style:italic;color:var(--accent)}
+#hd p{font-size:10px;color:#888;font-family:var(--mono);margin-top:2px;letter-spacing:.05em}
+#hd nav{margin-top:5px;display:flex;gap:14px;align-items:center}
+#hd nav a{font-size:11px;color:#666;text-decoration:none;font-family:var(--mono);border-bottom:1px solid transparent}
+#hd nav a:hover,#hd nav a.active{color:var(--ink);border-bottom-color:var(--ink)}
+.pill{font-family:var(--mono);font-size:9px;padding:2px 7px;border:1px solid var(--rule);color:#888}
+.pill.ok{border-color:var(--accent2);color:var(--accent2)}
+.pill.err{border-color:var(--red);color:var(--red)}
+
+/* ── THREE-PANE LAYOUT ── */
+#body{display:flex;flex:1;overflow:hidden}
+
+/* PANE 1 — headword list */
+#p1{width:200px;min-width:200px;border-right:1px solid var(--rule);display:flex;flex-direction:column;overflow:hidden;background:var(--warm)}
+#p1-top{padding:8px 10px;border-bottom:1px solid var(--rule);flex-shrink:0}
+#p1-top h2{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#888;margin-bottom:6px}
+#hw-q{width:100%;font-family:var(--serif);font-size:12px;padding:4px 7px;border:1px solid var(--rule);background:var(--paper);outline:none}
+#hw-q:focus{border-color:var(--accent)}
+.az-row{display:flex;flex-wrap:wrap;gap:2px;margin-top:6px}
+.az-btn{font-family:var(--mono);font-size:9px;padding:1px 4px;border:1px solid var(--rule);background:var(--paper);cursor:pointer;color:#888}
+.az-btn:hover,.az-btn.active{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+#hw-meta{font-family:var(--mono);font-size:9px;color:#aaa;padding:3px 10px;border-bottom:1px solid var(--faint);flex-shrink:0}
+#hw-list{flex:1;overflow-y:auto}
+.hw-item{display:flex;align-items:baseline;gap:5px;padding:4px 10px;cursor:pointer;border-bottom:1px solid var(--faint);font-size:12px}
+.hw-item:hover{background:var(--faint)}
+.hw-item.active{background:var(--ink);color:var(--paper)}
+.hw-item .wrd{flex:1}
+.hw-item .cnt{font-family:var(--mono);font-size:9px;color:#aaa}
+.hw-item.active .cnt{color:#ccc}
+.hw-item .nc{font-family:var(--mono);font-size:8px;color:#bbb}
+.hw-item.active .nc{color:#999}
+
+/* PANE 2 — collocations for selected headword */
+#p2{width:260px;min-width:260px;border-right:1px solid var(--rule);display:flex;flex-direction:column;overflow:hidden;background:var(--paper)}
+#p2-top{padding:8px 10px;border-bottom:1px solid var(--rule);flex-shrink:0}
+#p2-top h2{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#888;margin-bottom:4px}
+#p2-title{font-size:15px;color:var(--accent);font-style:italic}
+#p2-meta{font-family:var(--mono);font-size:9px;color:#aaa;margin-top:2px}
+.grp-filter{display:flex;gap:3px;flex-wrap:wrap;margin-top:6px}
+.gf{font-family:var(--mono);font-size:8px;padding:1px 5px;border:1px solid var(--rule);background:var(--warm);cursor:pointer;color:#888}
+.gf:hover,.gf.active{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+#coll-list{flex:1;overflow-y:auto}
+.coll-item{display:flex;align-items:center;gap:5px;padding:5px 10px;cursor:pointer;border-bottom:1px solid var(--faint);font-size:12px}
+.coll-item:hover{background:var(--warm)}
+.coll-item.active{background:#fef9e7;border-left:2px solid var(--accent)}
+.coll-item .ph{flex:1;line-height:1.3}
+.coll-item .cc{font-family:var(--mono);font-size:9px;color:#aaa;white-space:nowrap}
+.coll-item .fbar{display:inline-block;background:var(--accent);height:4px;min-width:1px;vertical-align:middle;opacity:.6;margin-left:4px}
+.coll-item .diam{color:var(--accent2);font-size:8px}
+.coll-item .grpbadge{font-family:var(--mono);font-size:8px;color:#bbb}
+
+/* PANE 3 — KWIC results */
+#p3{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#p3-top{padding:8px 14px;border-bottom:1px solid var(--rule);flex-shrink:0;background:var(--paper)}
+#p3-top h2{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#888}
+#p3-title{font-size:14px;margin-top:2px}
+#p3-title em{font-style:italic;color:var(--accent)}
+#p3-meta{font-family:var(--mono);font-size:9px;color:#aaa;margin-top:2px}
+#p3-inner{flex:1;overflow-y:auto;padding:6px 14px 40px}
+.ki{border-bottom:1px solid var(--faint);padding:8px 0}
+.ki-meta{font-family:var(--mono);font-size:9px;color:#bbb;margin-bottom:4px}
+.ki-meta .src{color:var(--accent)}
+.ki-en{font-size:13px;line-height:1.55;margin-bottom:5px}
+.ki-ar{font-family:var(--arabic);font-size:16px;direction:rtl;text-align:right;color:#555;line-height:1.9}
+mark{background:#ffe88a;color:var(--ink);padding:0 2px;font-weight:500}
+mark.ar{background:#c8e6c9;color:#1b5e20;padding:0 2px;}
+.msg{text-align:center;padding:60px 20px;color:#aaa;font-style:italic;font-size:13px}
+
+/* load overlay */
+#lo{position:fixed;inset:0;background:var(--paper);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;gap:14px}
+#lo h2{font-family:var(--serif);font-size:21px;font-weight:normal}
+#lo h2 em{font-style:italic;color:var(--accent)}
+.bt{width:290px;height:4px;background:var(--faint);overflow:hidden}
+.bf{height:100%;background:var(--accent);width:0%;transition:width .3s}
+#lo p{font-family:var(--mono);font-size:10px;color:#999}
+.spin{display:inline-block;width:10px;height:10px;border:2px solid #ddd;border-top-color:var(--accent);border-radius:50%;animation:rot .7s linear infinite;vertical-align:middle;margin-right:5px}
+@keyframes rot{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="lo">
+  <h2><em>Collocation Browser</em></h2>
+  <div class="bt"><div class="bf" id="bar"></div></div>
+  <p id="lmsg">Loading…</p>
+</div>
+
+<div id="hd">
+  <h1>Collocation Browser &mdash; <em>pre-analysed against 36,065 hadith</em></h1>
+  <p>11,462 ATTESTED COLLOCATIONS &bull; 2,999 HEADWORDS &bull; 113,106 CORPUS HITS &bull; OXFORD + MACMILLAN + OXFORD NEW</p>
+  <nav>
+    <a href="index.html">Corpus Search</a>
+    <a href="collocations.html" class="active">Collocation Browser</a>
+    <span id="pill" class="pill">⏳ Loading…</span>
+  </nav>
+</div>
+
+<div id="body">
+  <!-- PANE 1: headwords -->
+  <div id="p1">
+    <div id="p1-top">
+      <h2>Headwords (2,999)</h2>
+      <input id="hw-q" type="text" placeholder="search headword…" oninput="filterHW()">
+      <div class="az-row" id="az-row"></div>
+    </div>
+    <div id="hw-meta">—</div>
+    <div id="hw-list"></div>
+  </div>
+
+  <!-- PANE 2: collocations for selected headword -->
+  <div id="p2">
+    <div id="p2-top">
+      <h2>Collocations</h2>
+      <div id="p2-title">—</div>
+      <div id="p2-meta"></div>
+      <div class="grp-filter" id="grp-filter"></div>
+    </div>
+    <div id="coll-list"><div class="msg" style="padding:30px 10px;font-size:12px">Select a headword →</div></div>
+  </div>
+
+  <!-- PANE 3: KWIC -->
+  <div id="p3">
+    <div id="p3-top">
+      <h2>Hadith occurrences</h2>
+      <div id="p3-title">—</div>
+      <div id="p3-meta"></div>
+    </div>
+    <div id="p3-inner"><div class="msg">Select a collocation to see its occurrences in the hadith.</div></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+<script>
+// ── DATA ────────────────────────────────────────────────────────────────────
+let HW=null;        // {meta, headwords:[{w,c,n}]}
+let COLLS=null;     // {headword:[{p,g,c,d}]}
+let HITS=null;      // {phrase:[hadith_indices]}
+let CORPUS=null;    // corpus with PAIRS
+let PAIRS=[];       // [{e,a,s,n}]
+
+let activeHW=null, activeGrp=null, activeColl=null;
+let filteredHW=[];
+
+// ── LOAD ────────────────────────────────────────────────────────────────────
+async function loadGZ(url){
+  const r=await fetch(url); if(!r.ok) throw new Error('HTTP '+r.status+' '+url);
+  return JSON.parse(pako.ungzip(new Uint8Array(await r.arrayBuffer()),{to:'string'}));
+}
+async function load(){
+  const bar=document.getElementById('bar'), msg=document.getElementById('lmsg');
+  try{
+    msg.textContent='Loading headword index…'; bar.style.width='10%';
+    HW=await loadGZ('data/headwords.json.gz'); bar.style.width='25%';
+    msg.textContent='Loading collocations…';
+    COLLS=await loadGZ('data/collocations_by_hw.json.gz'); bar.style.width='40%';
+    msg.textContent='Loading hit index…';
+    HITS=await loadGZ('data/hits.json.gz'); bar.style.width='55%';
+    msg.textContent='Loading corpus (11 MB)…';
+    CORPUS=await loadGZ('data/corpus.json.gz'); bar.style.width='85%';
+    msg.textContent='Indexing corpus…';
+    for(const b of CORPUS.meta.books)
+      for(const h of CORPUS.books[b.slug].hadith)
+        PAIRS.push({e:h.en,a:h.ar,s:b.title_en,n:h.n});
+    bar.style.width='100%';
+    setTimeout(()=>document.getElementById('lo').style.display='none',250);
+    document.getElementById('pill').textContent=`✓ ${HW.meta.total_collocations.toLocaleString()} collocations · ${HW.meta.total_headwords.toLocaleString()} headwords`;
+    document.getElementById('pill').className='pill ok';
+    buildAZ(); filterHW();
+  }catch(e){
+    msg.textContent='Load failed: '+e.message;
+    document.getElementById('pill').textContent='✗ failed';
+    document.getElementById('pill').className='pill err';
+    console.error(e);
+  }
+}
+
+// ── PANE 1: headword browser ─────────────────────────────────────────────────
+let azFilter='';
+function buildAZ(){
+  const letters='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  document.getElementById('az-row').innerHTML=
+    letters.map(L=>`<button class="az-btn" onclick="setAZ('${L}')">${L}</button>`).join('')+
+    `<button class="az-btn" onclick="setAZ('')">all</button>`;
+}
+function setAZ(L){
+  azFilter=L.toLowerCase();
+  document.querySelectorAll('.az-btn').forEach(b=>b.classList.toggle('active',b.textContent===L||(L===''&&b.textContent==='all')));
+  filterHW();
+}
+function filterHW(){
+  const q=document.getElementById('hw-q').value.trim().toLowerCase();
+  filteredHW=HW.headwords.filter(h=>{
+    if(azFilter && !h.w.startsWith(azFilter)) return false;
+    if(q && !h.w.includes(q)) return false;
+    return true;
+  });
+  document.getElementById('hw-meta').textContent=`${filteredHW.length.toLocaleString()} headwords`;
+  document.getElementById('hw-list').innerHTML=filteredHW.map(h=>`
+    <div class="hw-item${activeHW===h.w?' active':''}" onclick="selectHW('${h.w.replace(/'/g,"\\'")}')">
+      <span class="wrd">${esc(h.w)}</span>
+      <span class="nc">${h.n}</span>
+      <span class="cnt">${h.c.toLocaleString()}</span>
+    </div>`).join('');
+}
+
+function selectHW(hw){
+  activeHW=hw; activeGrp=null; activeColl=null;
+  filterHW();   // re-render with active
+  renderColls(hw);
+  document.getElementById('p3-inner').innerHTML='<div class="msg">Select a collocation →</div>';
+  document.getElementById('p3-title').textContent='—';
+  document.getElementById('p3-meta').textContent='';
+}
+
+// ── PANE 2: collocations ─────────────────────────────────────────────────────
+function renderColls(hw){
+  const list=COLLS[hw]||[];
+  const total=list.reduce((s,c)=>s+c.c,0);
+  document.getElementById('p2-title').textContent=hw;
+  document.getElementById('p2-meta').textContent=`${list.length} collocations · ${total.toLocaleString()} hits`;
+  // group filter buttons
+  const grps=[...new Set(list.map(c=>c.g))].sort();
+  document.getElementById('grp-filter').innerHTML=
+    `<button class="gf${activeGrp===null?' active':''}" onclick="setGrp(null)">all</button>`+
+    grps.map(g=>`<button class="gf${activeGrp===g?' active':''}" onclick="setGrp('${g}')">${g}</button>`).join('');
+  renderCollList(hw,list);
+}
+function setGrp(g){activeGrp=g;document.querySelectorAll('.gf').forEach(b=>b.classList.toggle('active',b.textContent===(g||'all')));renderCollList(activeHW,COLLS[activeHW]||[]);}
+function renderCollList(hw,list){
+  const filtered=activeGrp?list.filter(c=>c.g===activeGrp):list;
+  const maxC=Math.max(...filtered.map(c=>c.c),1);
+  document.getElementById('coll-list').innerHTML=filtered.map(c=>`
+    <div class="coll-item${activeColl===c.p?' active':''}" onclick="selectColl('${esc(hw)}','${c.p.replace(/'/g,"\\'")}')">
+      <span class="ph">${highlightHead(c.p,hw)}</span>
+      ${c.d>=2?'<span class="diam" title="in multiple dictionaries">◆</span>':''}
+      <span class="grpbadge">${c.g.replace('+',' ')}</span>
+      <span class="cc">${c.c}<span class="fbar" style="width:${Math.round((c.c/maxC)*28)}px"></span></span>
+    </div>`).join('');
+}
+function highlightHead(phrase,hw){
+  // bold the headword portion inside the phrase
+  const i=phrase.indexOf(hw);
+  if(i<0) return esc(phrase);
+  return esc(phrase.slice(0,i))+'<strong>'+esc(phrase.slice(i,i+hw.length))+'</strong>'+esc(phrase.slice(i+hw.length));
+}
+
+// ── PANE 3: KWIC ─────────────────────────────────────────────────────────────
+const EN_AR={"hand":["يد","يده","يديه","يدي"],"head":["رأس","رأسه","رأسها","رأسي"],"face":["وجه","وجهه","وجهها","وجهي"],"hair":["شعر","شعره","شعرها"],"eye":["عين","عينه","عينيه","عيون"],"heart":["قلب","قلبه","قلبها","قلوب"],"back":["ظهر","ظهره","ظهرها"],"foot":["قدم","قدمه","قدميه","أقدام"],"feet":["قدم","قدمه","قدميه","أقدام"],"finger":["إصبع","أصابع"],"tongue":["لسان","لسانه"],"mouth":["فم","فاه"],"ear":["أذن","أذنيه","آذان"],"knee":["ركبة","ركبتيه"],"chest":["صدر","صدره"],"shoulder":["كتف","كتفيه"],"neck":["رقبة","عنق"],"blood":["دم","دمه","دماء"],"skin":["جلد","جلده"],"body":["جسد","جسم","بدن"],"bone":["عظم","عظام"],"day":["يوم","يومه","أيام","اليوم"],"night":["ليلة","ليل","ليلاً","الليل"],"morning":["صباح","فجر","بكرة"],"evening":["مساء","عشية","عشاء"],"hour":["ساعة","ساعته"],"time":["وقت","زمان","حين","وقته"],"year":["سنة","عام","سنين","أعوام"],"month":["شهر","أشهر","شهره"],"week":["أسبوع","أسابيع"],"moment":["لحظة","حين","وقت"],"period":["فترة","مدة"],"age":["عمر","سن","عصر"],"old":["قديم","عتيق","شيخ"],"young":["شاب","شباب","صغير"],"long":["طويل","طويلاً","بعيد"],"first":["أول","أولاً","بداية"],"last":["آخر","أخير","آخرون"],"end":["نهاية","آخر","انتهى","أنهى"],"prayer":["صلاة","صلاته","صلى","يصلي"],"pray":["صلى","يصلي","صلاة"],"fast":["صيام","صوم","صام","يصوم"],"zakat":["زكاة","زكاته"],"pilgrimage":["حج","حجة","حجه"],"charity":["صدقة","تصدق"],"deed":["عمل","أعمال"],"faith":["إيمان","دين"],"worship":["عبادة","يعبد","عبد"],"intention":["نية","نيته"],"repent":["توبة","تاب","يتوب"],"sin":["ذنب","ذنبه","ذنوب","خطيئة"],"reward":["أجر","ثواب"],"punishment":["عقوبة","عذاب"],"paradise":["جنة","الجنة"],"hell":["نار","جهنم","النار"],"intercession":["شفاعة","يشفع"],"man":["رجل","رجلاً","الرجل"],"woman":["امرأة","المرأة","نساء"],"person":["شخص","امرء","إنسان"],"people":["الناس","قوم","أناس"],"child":["ولد","طفل","صبي","أولاد"],"father":["أب","والد","أبيه"],"mother":["أم","والدة","أمه"],"son":["ابن","ولد","ابنه"],"daughter":["ابنة","بنت","بنته"],"brother":["أخ","أخاه","إخوان"],"sister":["أخت","أخته"],"husband":["زوج","زوجها"],"wife":["زوجة","زوجته","امرأته"],"family":["أهل","عائلة","أسرة"],"friend":["صاحب","صديق","خليل"],"neighbour":["جار","جاره","جيران"],"slave":["عبد","مملوك","عبده"],"master":["سيد","مولى"],"servant":["خادم","عبد"],"guest":["ضيف","ضيفه"],"orphan":["يتيم","أيتام"],"poor":["فقير","مسكين","فقراء","مساكين"],"water":["ماء","ماءً","الماء"],"fire":["نار","ناراً","النار"],"earth":["أرض","الأرض","تراب"],"sun":["شمس","الشمس"],"moon":["قمر","القمر"],"rain":["مطر","مطراً"],"wind":["ريح","رياح"],"tree":["شجرة","شجر"],"river":["نهر","نهراً","أنهار"],"stone":["حجر","حجراً","حجارة"],"dust":["تراب","غبار"],"sand":["رمل","رمال"],"say":["قال","قول","يقول","قائل"],"take":["أخذ","يأخذ","تناول"],"give":["أعطى","يعطي","أعطاه","وهب"],"make":["صنع","جعل","يجعل","فعل"],"come":["جاء","أتى","قدم","يأتي"],"go":["ذهب","مضى","يذهب"],"see":["رأى","يرى","أبصر"],"hear":["سمع","يسمع","سمعت"],"know":["علم","يعلم","عرف"],"ask":["سأل","يسأل"],"tell":["أخبر","قال","يخبر"],"eat":["أكل","يأكل","طعام"],"drink":["شرب","يشرب"],"walk":["مشى","يمشي"],"sit":["جلس","يجلس","قعد"],"stand":["قام","وقف","يقوم"],"sleep":["نام","ينام","نوم"],"run":["جرى","يجري"],"return":["رجع","عاد","يرجع","يعود"],"enter":["دخل","يدخل"],"leave":["خرج","ترك","يخرج"],"follow":["اتبع","تبع"],"seek":["طلب","التمس","يطلب"],"find":["وجد","يجد"],"bring":["جاء","أحضر","جلب"],"send":["أرسل","بعث","يرسل"],"look":["نظر","ينظر"],"put":["وضع","يضع"],"hold":["أمسك","أخذ","يمسك"],"cut":["قطع","يقطع"],"break":["كسر","يكسر"],"open":["فتح","يفتح"],"read":["قرأ","يقرأ"],"write":["كتب","يكتب"],"call":["نادى","دعا","يدعو"],"reach":["بلغ","وصل","يصل"],"pay":["دفع","أدى","يدفع"],"fight":["قاتل","جاهد","حارب"],"kill":["قتل","يقتل"],"die":["مات","يموت","توفي"],"turn":["التفت","تحول"],"finish":["انتهى","أتم","أكمل"],"stay":["بقي","مكث","أقام"],"buy":["اشترى","يشتري"],"sell":["باع","يبيع"],"want":["أراد","يريد","أحب"],"permit":["أذن","سمح"],"forbid":["نهى","حرم","منع"],"order":["أمر","يأمر"],"mention":["ذكر","يذكر","اذكر"],"offer":["عرض","قدم"],"fear":["خاف","يخاف","خشي"],"love":["أحب","حب","يحب"],"hate":["كره","يكره"],"weep":["بكى","يبكي"],"laugh":["ضحك","يضحك"],"intercourse":["جماع","مباشرة"],"bath":["غسل","اغتسل","غسله"],"purify":["طهر","يطهر"],"wash":["غسل","يغسل"],"word":["كلمة","كلام","قول","كلمته"],"knowledge":["علم","معرفة","علمه"],"truth":["حق","صدق","حقيقة"],"right":["حق","حقه"],"good":["خير","حسن","طيب"],"evil":["شر","سوء","شراً"],"death":["موت","وفاة","موته"],"life":["حياة","حياته","دنيا"],"world":["دنيا","عالم"],"food":["طعام","أكل","غذاء"],"name":["اسم","اسمه","اسمها"],"place":["مكان","موضع","محل"],"way":["طريق","سبيل","وجه"],"matter":["أمر","شأن"],"thing":["شيء","أمر"],"cause":["سبب","لأجل"],"part":["جزء","بعض"],"side":["جانب","ناحية"],"kind":["نوع","صنف","جنس"],"form":["شكل","صورة","هيئة"],"point":["نقطة","درجة","حد"],"permission":["إذن","رخصة"],"oath":["يمين","حلف","قسم"],"marriage":["نكاح","زواج","نكاحه"],"sexual":["جنس","فرج"],"married":["تزوج","نكح","زوج"],"free":["حر","فراغ","أحرار"],"refuge":["لجأ","استعاذ","عوذ"],"report":["حديث","خبر","روى"],"great":["عظيم","كبير","عظم"],"days":["أيام","يوم"],"pleased":["رضي","رضا","مرضي"],"tie":["ربط","عقد"],"better":["أفضل","خير","أحسن"],"able":["استطاع","يستطيع","قدر","قادر"],"present":["حاضر","موجود"],"left":["يسار","شمال","يسرى"],"three":["ثلاثة","ثلاث"],"one":["واحد","أحد","إحدى"],"white":["أبيض","بياض"],"black":["أسود","سواد"],"red":["أحمر","حمرة"],"clean":["طاهر","نظيف","طهارة"],"dirty":["نجس","قذر"],"weak":["ضعيف","ضعف"],"strong":["قوي","قوة"],"rich":["غني","ثروة"],"wise":["حكيم","حكمة"],"honest":["صادق","أمين"],"patient":["صابر","صبر"],"grateful":["شاكر","شكر"],"humble":["متواضع","خشوع"],"proud":["متكبر","كبر"],"angry":["غاضب","غضب"],"happy":["سعيد","فرح"],"sad":["حزين","حزن"],"sick":["مريض","مرض"],"healthy":["صحيح","صحة","سالم"],"alive":["حي","حياة"],"dead":["ميت","موت"],"house":["بيت","دار","منزل"],"mosque":["مسجد","جامع"],"market":["سوق"],"road":["طريق","سبيل"],"door":["باب","أبواب"],"book":["كتاب","كتب"],"sword":["سيف","أسياف"],"horse":["فرس","خيل"],"camel":["ناقة","إبل","جمل"],"gold":["ذهب","ذهباً"],"silver":["فضة","فضة"],"clothes":["ثوب","ملابس","كسوة"],"bed":["فراش","سرير"],"milk":["لبن","حليب"],"meat":["لحم","لحماً"],"date":["تمر","تمرة"],"smell":["ريح","رائحة"],"sound":["صوت","صوته"],"light":["نور","ضوء","خفيف"],"heavy":["ثقيل","ثقل"],"high":["عالٍ","رفيع"],"low":["منخفض","أدنى"],"big":["كبير","عظيم"],"small":["صغير","قليل"],"many":["كثير","كثيراً"],"few":["قليل","نزر"],"all":["كل","جميع","كلهم"],"half":["نصف","نصفه"],"full":["كامل","مليء","تام"],"empty":["خالٍ","فارغ"],"new":["جديد","حديث"],"true":["صحيح","صادق","حق"],"false":["كاذب","باطل"],"together":["معاً","جميعاً"],"alone":["وحده","منفرد"],"quickly":["سريعاً","عجل"],"slowly":["ببطء","رويداً"],"sudden":["فجأة","بغتة"],"important":["مهم","أهمية"],"necessary":["ضروري","واجب","لازم"],"forbidden":["محرم","حرام","نهى"],"allowed":["مباح","جائز","حلال"],"obligatory":["واجب","فرض"],"recommended":["مستحب","سنة","يستحب"]};
+const STOP=new Set("a an the his her their its my your our this that these those some any of to in on at by for with from and or".split(' '));
+const IRREG={ran:'run',runs:'run',running:'run',was:'be',were:'be',is:'be',are:'be',been:'be',being:'be',had:'have',has:'have',having:'have',did:'do',does:'do',doing:'do',said:'say',saying:'say',made:'make',making:'make',came:'come',coming:'come',took:'take',taken:'take',taking:'take',known:'know',knew:'know',thought:'think',found:'find',finding:'find',told:'tell',gave:'give',given:'give',giving:'give',played:'play',plays:'play',playing:'play',paid:'pay',pays:'pay',paying:'pay',lost:'lose',loses:'lose',losing:'lose',bore:'bear',borne:'bear',bearing:'bear',bears:'bear',shown:'show',showed:'show',showing:'show',shows:'show',roles:'role',mistakes:'mistake',hearts:'heart'};
+function lemma(w){w=w.toLowerCase();if(IRREG[w])return IRREG[w];if(w.endsWith('ies')&&w.length>4)return w.slice(0,-3)+'y';if(w.endsWith('ing')&&w.length>5){const s=w.slice(0,-3);return(s.length>3&&s[s.length-1]===s[s.length-2])?s.slice(0,-1):s;}if(w.endsWith('ed')&&w.length>4){const s=w.slice(0,-2);return(s.length>3&&s[s.length-1]===s[s.length-2])?s.slice(0,-1):s;}if(w.endsWith('es')&&w.length>4)return w.slice(0,-2);if(w.endsWith('s')&&!w.endsWith('ss')&&w.length>3)return w.slice(0,-1);return w;}
+function tok(t){return t.toLowerCase().match(/[a-z']+/g)||[];}
+
+function selectColl(hw,phrase){
+  activeColl=phrase;
+  renderCollList(hw,COLLS[hw]||[]);
+  const idxs=HITS[phrase]||[];
+  const total_count=(COLLS[hw]||[]).find(c=>c.p===phrase)?.c||idxs.length;
+  document.getElementById('p3-title').innerHTML=`&ldquo;<em>${esc(phrase)}</em>&rdquo;`;
+  document.getElementById('p3-meta').textContent=`${total_count} occurrences in corpus${total_count>300?' (showing first 300)':''}`;
+  const qc=tok(phrase).filter(w=>!STOP.has(w)).map(lemma);
+  document.getElementById('p3-inner').innerHTML=idxs.map(idx=>{
+    const p=PAIRS[idx];
+    if(!p) return '';
+    return `<div class="ki">
+      <div class="ki-meta"><span class="src">${esc(p.s)}</span> &nbsp;#${p.n}</div>
+      <div class="ki-en">${highlightSpan(p.e,qc)}</div>
+      <div class="ki-ar">${esc(p.a)}</div>
+    </div>`;
+  }).join('');
+}
+
+function highlightSpan(sentence,qc){
+  const rawToks=tok(sentence);const normToks=rawToks.map(lemma);
+  const n=normToks.length,m=qc.length;
+  const marks=new Set();
+  for(let i=0;i<n;i++){
+    if(normToks[i]!==qc[0])continue;
+    let qi=1,gap=0,j=i+1,ok=m===1;
+    const ms=[i];
+    while(j<n&&qi<m){
+      if(normToks[j]===qc[qi]){ms.push(j);qi++;gap=0;j++;if(qi===m){ok=true;break;}}
+      else if(STOP.has(rawToks[j])){j++;}
+      else{gap++;j++;if(gap>3)break;}
+    }
+    if(ok){ms.forEach(x=>marks.add(x));break;}
+  }
+  if(!marks.size) return esc(sentence);
+  let out='',last=0,ti=0,low=sentence.toLowerCase();
+  const re=/[a-z']+/g;let m2;
+  while((m2=re.exec(low))!==null){
+    const s=m2.index,e=s+m2[0].length;
+    out+=esc(sentence.slice(last,s));
+    out+=marks.has(ti)?'<mark>'+esc(sentence.slice(s,e))+'</mark>':esc(sentence.slice(s,e));
+    last=e;ti++;
+  }
+  return out+esc(sentence.slice(last));
+}
+
+// Normalise Arabic for matching (strip diacritics, normalise alef variants)
+function arNorm(s){
+  return s.replace(/[\u064B-\u0652\u0670\u0640]/g,'')
+          .replace(/[\u0625\u0623\u0622\u0627]/g,'\u0627')
+          .replace(/\u0649/g,'\u064A')
+          .replace(/\u0629/g,'\u0647');
+}
+
+// Highlight Arabic equivalents of the English collocation content words
+function highlightArabic(arText, qc){
+  // Gather all Arabic forms to search for
+  const targets=[];
+  for(const w of qc){
+    const forms=EN_AR[w]||EN_AR[lemma(w)]||[];
+    for(const f of forms) targets.push(f);
+  }
+  if(!targets.length) return esc(arText);
+  const norm=arNorm(arText);
+  // Find all match positions [start,end] in the original string
+  // We map normalised positions back to original positions
+  // Build char map: normIndex -> origIndex
+  const origMap=[];
+  for(let i=0;i<arText.length;i++){
+    const nc=arNorm(arText[i]);
+    for(let k=0;k<nc.length;k++) origMap.push(i);
+  }
+  const ranges=[];
+  for(const t of targets){
+    const tn=arNorm(t);
+    let idx=0;
+    while(true){
+      const pos=norm.indexOf(tn,idx);
+      if(pos<0) break;
+      const origStart=origMap[pos];
+      const origEnd=(pos+tn.length<origMap.length)?origMap[pos+tn.length]:arText.length;
+      // Only accept whole-word-ish matches (not mid-word)
+      const before=pos===0||/[\u0600-\u06FF]/.test(norm[pos-1])===false;
+      ranges.push([origStart,origEnd]);
+      idx=pos+tn.length;
+    }
+  }
+  if(!ranges.length) return esc(arText);
+  // Merge overlapping ranges
+  ranges.sort((a,b)=>a[0]-b[0]);
+  const merged=[];
+  for(const [s,e] of ranges){
+    if(merged.length&&s<=merged[merged.length-1][1]) merged[merged.length-1][1]=Math.max(merged[merged.length-1][1],e);
+    else merged.push([s,e]);
+  }
+  // Build output
+  let out='',last=0;
+  for(const [s,e] of merged){
+    out+=esc(arText.slice(last,s));
+    out+='<mark class="ar">'+esc(arText.slice(s,e))+'</mark>';
+    last=e;
+  }
+  return out+esc(arText.slice(last));
+}
+
+function esc(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+load();
+</script>
+</body>
+</html>
